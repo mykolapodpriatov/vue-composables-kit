@@ -11,6 +11,10 @@ browser, and timers that clean up after themselves.
 ![ESM only](https://img.shields.io/badge/ESM-only-yellow)
 [![license](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
 
+**[Documentation](https://mykolapodpriatov.github.io/vue-composables-kit/) ·
+[Why this exists](https://mykolapodpriatov.github.io/vue-composables-kit/guide/why) ·
+[API](https://mykolapodpriatov.github.io/vue-composables-kit/api/use-async-data)**
+
 ---
 
 ## Why this exists
