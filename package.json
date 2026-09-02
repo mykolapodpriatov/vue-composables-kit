@@ -55,7 +55,8 @@
     "format:check": "prettier --check \"**/*.{ts,js,json,md}\"",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
-    "verify": "pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run build"
+    "verify": "pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run build",
+    "prepublishOnly": "pnpm run verify"
   },
   "peerDependencies": {
     "vue": "^3.4.0"
@@ -81,5 +82,8 @@
       "esbuild",
       "unrs-resolver"
     ]
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
