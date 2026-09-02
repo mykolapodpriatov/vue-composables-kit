@@ -1,0 +1,37 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":semanticCommits", ":dependencyDashboard"],
+  "timezone": "Europe/Kyiv",
+  "schedule": ["before 6am on monday"],
+  "labels": ["dependencies"],
+  "prConcurrentLimit": 3,
+  "packageRules": [
+    {
+      "description": "Group the lint/format toolchain — these move together and are low risk.",
+      "matchPackageNames": ["eslint", "prettier", "typescript-eslint", "@eslint/js", "eslint-config-prettier"],
+      "groupName": "linting"
+    },
+    {
+      "description": "Group the Vitest packages: their versions are locked to each other by peer ranges.",
+      "matchPackageNames": ["vitest", "@vitest/**"],
+      "groupName": "vitest"
+    },
+    {
+      "description": "TypeScript is pinned below 6.1 because typescript-eslint declares that peer bound. Raising it silently disables type-aware linting, so it needs a human.",
+      "matchPackageNames": ["typescript"],
+      "allowedVersions": "<6.1.0",
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "Vue majors are a manual decision — no RC lines in a portfolio repo.",
+      "matchPackageNames": ["vue", "nuxt"],
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "Never auto-bump onto a prerelease.",
+      "matchCurrentVersion": "!/^0/",
+      "ignoreUnstable": true
+    }
+  ]
+}
