@@ -1,0 +1,62 @@
+# Publish the documentation site to GitHub Pages.
+#
+# Separate from `ci.yml` because it has a different trigger and a different
+# permission set: this one writes, and a workflow that can deploy should not
+# also be the one running on every pull request from a fork.
+name: docs
+
+on:
+  push:
+    branches: [main]
+  # So the site can be republished without an empty commit.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time. `cancel-in-progress: false` because cancelling a
+# deploy mid-flight can leave the site in a half-published state — unlike a
+# test run, where the newest commit simply supersedes the old one.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  PNPM_VERSION: 10.33.2
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          # VitePress shows a last-updated timestamp per page, which it reads
+          # from git history — a shallow clone makes every page claim it was
+          # updated today.
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: actions/configure-pages@v5
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run docs:build
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/.vitepress/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

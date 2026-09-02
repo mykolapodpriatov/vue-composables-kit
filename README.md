@@ -176,6 +176,14 @@ Not here, and not coming: `useMouse`, `useClipboard`, `useMediaQuery`,
 `useDark`. VueUse does those better, and a second library that half-covers them
 serves nobody.
 
+## Documentation
+
+<https://mykolapodpriatov.github.io/vue-composables-kit/>
+
+Organised around problems rather than around the export list — someone arriving
+has a symptom ("my poll wiped the page", "the socket says connected and nothing
+arrives"), not the name of the composable that fixes it.
+
 ## Playground
 
 ```bash

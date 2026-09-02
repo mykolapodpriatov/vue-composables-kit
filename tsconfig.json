@@ -26,5 +26,13 @@
     "noEmit": true,
     "types": ["vitest/globals"]
   },
-  "include": ["src/**/*.ts", "test/**/*.ts", "*.config.ts", "eslint.config.js"]
+  // The VitePress config is included rather than excluded: it is real code that
+  // decides the site's routing, and a typo in a sidebar link is a broken page.
+  "include": [
+    "src/**/*.ts",
+    "test/**/*.ts",
+    "*.config.ts",
+    "docs/.vitepress/**/*.ts",
+    "eslint.config.js"
+  ]
 }
