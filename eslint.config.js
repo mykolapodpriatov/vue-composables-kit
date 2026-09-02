@@ -25,7 +25,7 @@ export default defineConfig([
   tseslint.configs.stylisticTypeChecked,
 
   {
-    files: ['src/**/*.ts', 'test/**/*.ts', '*.config.ts'],
+    files: ['src/**/*.ts', 'test/**/*.ts', '*.config.ts', 'docs/.vitepress/**/*.ts'],
     languageOptions: {
       parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },
     },
