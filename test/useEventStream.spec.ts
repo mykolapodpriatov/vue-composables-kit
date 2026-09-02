@@ -385,13 +385,16 @@ describe('useEventStream', () => {
       dispose();
     });
 
-    it('resets the retry counter after a successful open', async () => {
+    it('resets the retry counter on a delivered message, not on open', async () => {
+      // Opening proves the socket connects. Only a message proves it works, and
+      // the difference is the whole zombie case.
       const { value, dispose } = withScope(() =>
         useEventStream<string>({
           websocketUrl: () => 'wss://example.test/feed',
           maxRetries: 5,
           retryDelayMs: 10,
           jitter: false,
+          parse: (raw) => String(raw),
           onMessage: () => {},
           createWebSocket,
         }),
@@ -400,7 +403,13 @@ describe('useEventStream', () => {
       latestSocket().fail();
       expect(value.retries.value).toBe(1);
       await vi.advanceTimersByTimeAsync(10);
+
+      // Open alone leaves the counter where it was.
       latestSocket().open();
+      expect(value.retries.value).toBe(1);
+
+      // A message is the evidence that earns a clean slate.
+      latestSocket().emit('a real payload');
       expect(value.retries.value).toBe(0);
       dispose();
     });
@@ -450,6 +459,39 @@ describe('useEventStream', () => {
       }
       // 4.5s of wall clock, never 1s of silence — no reconnect.
       expect(FakeSocket.instances).toHaveLength(1);
+      dispose();
+    });
+
+    it('degrades away from a transport that opens but never delivers', async () => {
+      // The failure the playground exposed. A zombie socket opens perfectly
+      // every time, so resetting the retry counter on `open` meant the counter
+      // never accumulated, the ladder never degraded, and the feed reconnected
+      // to the same dead transport forever while reporting itself healthy.
+      const { value, dispose } = withScope(() =>
+        useEventStream<string>({
+          websocketUrl: () => 'wss://example.test/feed',
+          sseUrl: () => 'https://example.test/sse',
+          staleAfterMs: 1000,
+          maxRetries: 1,
+          retryDelayMs: 10,
+          jitter: false,
+          onMessage: () => {},
+          createWebSocket,
+          createEventSource,
+        }),
+      );
+
+      // First stall: retry the same rung.
+      latestSocket().open();
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(value.retries.value).toBe(1);
+      await vi.advanceTimersByTimeAsync(10);
+
+      // Second stall: maxRetries exhausted, so drop to SSE.
+      latestSocket().open();
+      await vi.advanceTimersByTimeAsync(1000);
+
+      expect(value.transport.value).toBe('sse');
       dispose();
     });
 

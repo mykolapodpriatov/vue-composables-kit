@@ -7,7 +7,7 @@ browser, and timers that clean up after themselves.
 [![ci](https://github.com/mykolapodpriatov/vue-composables-kit/actions/workflows/ci.yml/badge.svg)](https://github.com/mykolapodpriatov/vue-composables-kit/actions/workflows/ci.yml)
 ![Vue 3.5](https://img.shields.io/badge/Vue-3.5-42b883)
 ![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-3178C6)
-![tests](https://img.shields.io/badge/tests-150-brightgreen)
+![tests](https://img.shields.io/badge/tests-151-brightgreen)
 ![ESM only](https://img.shields.io/badge/ESM-only-yellow)
 [![license](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
 
@@ -175,6 +175,34 @@ Deliberately narrow: **async lifecycle and resilience**.
 Not here, and not coming: `useMouse`, `useClipboard`, `useMediaQuery`,
 `useDark`. VueUse does those better, and a second library that half-covers them
 serves nobody.
+
+## Playground
+
+```bash
+pnpm build            # the playground imports dist/, not src/
+cd playground && pnpm install && pnpm dev
+```
+
+Every control triggers a failure these composables exist for: a slow request, a
+superseded one, a backend that hangs, and a socket that opens, reports itself
+connected, and then delivers nothing.
+
+That last case is why the playground exists rather than a screenshot. It found a
+real flaw: `retries` used to reset on `open`, and a zombie connection opens
+perfectly every time — so the counter never accumulated, the ladder never
+degraded, and the feed reconnected to the same dead transport forever while
+reporting itself healthy. The counter now resets on a **delivered message**,
+because that is the only evidence a transport actually works.
+
+```
+WS zombie, SSE down:
+  t≈2s   transport: websocket   retries: 0
+  t≈7s   transport: websocket   retries: 1
+  t≈12s  transport: poll        retries: 0   ← degraded, as it should
+```
+
+It imports the built package rather than `../src`, so a broken `exports` map or
+a missing declaration file shows up here instead of in someone's install.
 
 ## Testing
 
