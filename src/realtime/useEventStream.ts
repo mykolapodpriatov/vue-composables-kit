@@ -274,9 +274,23 @@ export function useEventStream<T>(options: UseEventStreamOptions<T>): UseEventSt
     }, staleAfterMs);
   }
 
-  /** Deliver an already-typed payload: stamp it, re-arm the watchdog, hand it on. */
+  /**
+   * Deliver an already-typed payload: stamp it, re-arm the watchdog, hand it on.
+   *
+   * This is also where the retry counter resets — **not** on `open`.
+   *
+   * Resetting on open looks equivalent and is not. A zombie connection opens
+   * perfectly every time; only the messages are missing. Resetting there means
+   * the counter never accumulates, the ladder never degrades, and the feed
+   * reconnects to the same dead transport forever while reporting itself
+   * healthy. Found by watching it happen in the playground.
+   *
+   * A delivered message is the only evidence a transport actually works, so it
+   * is the only thing that earns a clean slate.
+   */
   function emit(payload: T): void {
     lastMessageAt.value = Date.now();
+    retries.value = 0;
     armStaleWatchdog();
     onMessage(payload);
   }
@@ -392,8 +406,9 @@ export function useEventStream<T>(options: UseEventStreamOptions<T>): UseEventSt
       const ws = socketFactory(url);
       socket = ws;
       ws.onopen = () => {
+        // `connected` reflects the socket, which is genuinely open. The retry
+        // counter is *not* reset here — see `emit`.
         connected.value = true;
-        retries.value = 0;
         armStaleWatchdog();
       };
       ws.onmessage = (event) => {
@@ -421,7 +436,6 @@ export function useEventStream<T>(options: UseEventStreamOptions<T>): UseEventSt
       source = es;
       es.onopen = () => {
         connected.value = true;
-        retries.value = 0;
         armStaleWatchdog();
       };
       es.onmessage = (event) => {
@@ -444,6 +458,7 @@ export function useEventStream<T>(options: UseEventStreamOptions<T>): UseEventSt
 
   function connectPolling(fetcher: NonNullable<UseEventStreamOptions<T>['poll']>): void {
     connected.value = true;
+    // The last rung: there is nowhere to degrade to, so the counter is moot.
     retries.value = 0;
 
     const tick = async (): Promise<void> => {

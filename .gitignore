@@ -7,3 +7,5 @@ docs/.vitepress/dist/
 .DS_Store
 .env
 .env.*
+playground/dist/
+playground/node_modules/
