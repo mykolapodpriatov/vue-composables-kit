@@ -1,0 +1,71 @@
+# Publishing vue-composables-kit to npm.
+#
+# The point of this file is that `npm login` is interactive, so publishing has
+# been something that happens on somebody's laptop, or in practice does not
+# happen at all. A release is a tag push now.
+#
+# What is still manual, once: npm requires the @mykolapodpriatov scope to exist
+# and the package name to be claimed before anything can publish into it. Do
+# that once by hand; after that this workflow is the only path that publishes.
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  # Required both for npm Trusted Publishing (OIDC) and for --provenance.
+  id-token: write
+
+env:
+  PNPM_VERSION: 10.33.2
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      # A tag that disagrees with package.json publishes a version nobody can
+      # find from the repository. Fail before anything is built, not after.
+      - name: Tag must match package.json
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(node -p "require('./package.json').version")"
+          if [ "$tag" != "$pkg" ]; then
+            echo "tag v$tag does not match package.json version $pkg"
+            exit 1
+          fi
+          echo "publishing version $pkg"
+
+      - run: pnpm install --frozen-lockfile
+
+      # Lint, typecheck, tests and build, in that order. Before publishing,
+      # never after: a broken release cannot be unpublished after 72 hours.
+      - name: Verify
+        run: pnpm run verify
+
+      # NODE_AUTH_TOKEN is used when the NPM_TOKEN secret exists. When it does
+      # not, npm falls back to Trusted Publishing over the OIDC token granted
+      # above, which needs no secret in this repository at all.
+      - name: Publish
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
