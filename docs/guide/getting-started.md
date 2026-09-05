@@ -2,9 +2,35 @@
 
 ## Install
 
+Not on npm yet. Until it is, install from the repository with pnpm:
+
+```yaml
+# pnpm-workspace.yaml (or the same key in package.json)
+onlyBuiltDependencies:
+  - "@mykolapodpriatov/vue-composables-kit"
+```
+
+```bash
+pnpm add github:mykolapodpriatov/vue-composables-kit
+```
+
+pnpm 10 refuses to run a git dependency's build script without that allowlist
+entry, and this package builds itself on install so that the `dist` its
+`exports` map points at exists in a fresh clone.
+
+npm and Yarn cannot install it from git today: npm's git-dependency preparation
+runs its own `npm install` inside the checkout, which fails on a repository that
+ships only a pnpm lockfile. Wait for the npm release rather than working around
+that.
+
+Once published:
+
 ```bash
 pnpm add @mykolapodpriatov/vue-composables-kit
 ```
+
+The import path is `@mykolapodpriatov/vue-composables-kit` either way, so every
+example below works with both.
 
 ESM only. `vue` is a peer dependency; there are no runtime dependencies.
 
