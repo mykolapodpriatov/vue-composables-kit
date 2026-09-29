@@ -325,6 +325,27 @@ describe('useEventStream', () => {
       expect(onMessage).toHaveBeenCalledWith('named-payload');
       dispose();
     });
+
+    it('parses JSON frames by default over the unnamed SSE message event', () => {
+      // `sseEvents` is opt-in, for servers that name their events. A plain
+      // `data: ...\n\n` frame with no `event:` field arrives on `onmessage`,
+      // not through `addEventListener`, and that is what most SSE servers
+      // send. This is the same default-parse behaviour already covered for
+      // WebSocket above, verified for the transport most SSE deployments
+      // actually use.
+      const onMessage = vi.fn();
+      const { dispose } = withScope(() =>
+        useEventStream<{ price: number }>({
+          sseUrl: () => 'https://example.test/sse',
+          onMessage,
+          createEventSource,
+        }),
+      );
+      latestSource().open();
+      latestSource().emit('{"price":42}');
+      expect(onMessage).toHaveBeenCalledWith({ price: 42 });
+      dispose();
+    });
   });
 
   describe('backoff', () => {
