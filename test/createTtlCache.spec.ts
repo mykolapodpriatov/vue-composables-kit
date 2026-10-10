@@ -91,6 +91,24 @@ describe('createTtlCache', () => {
       );
     });
 
+    it('does not write a credential into the storage key', () => {
+      const cache = createTtlCache({ storage });
+      const key = cache.keyFor('/x', {
+        headers: { Authorization: 'Bearer secret-token' },
+      });
+
+      expect(key).not.toContain('secret-token');
+      expect(key).not.toContain('Bearer');
+    });
+
+    it('does not collide when a header value contains the old separators', () => {
+      // `{a: "b|c:d"}` and `{a: "b", c: "d"}` used to join into the same string.
+      const cache = createTtlCache({ storage });
+      expect(cache.keyFor('/x', { headers: { a: 'b|c:d' } })).not.toBe(
+        cache.keyFor('/x', { headers: { a: 'b', c: 'd' } }),
+      );
+    });
+
     it('ignores header order', () => {
       // Two objects describing the same request must not produce two entries.
       const cache = createTtlCache({ storage });
@@ -102,7 +120,7 @@ describe('createTtlCache', () => {
     it('ignores header name case', () => {
       const cache = createTtlCache({ storage });
       expect(cache.keyFor('/x', { headers: { Accept: 'json' } })).toBe(
-        cache.keyFor('/x', { headers: { accept: 'json' } })
+        cache.keyFor('/x', { headers: { accept: 'json' } }),
       );
     });
 
