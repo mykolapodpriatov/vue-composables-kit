@@ -136,16 +136,46 @@ function safeStringify(value: unknown): string {
 }
 
 /**
+ * Headers whose raw value is a credential. The cache key has to differ when
+ * they differ, or one user's response is served to the next, but the value
+ * itself must not be written into the storage key.
+ */
+const SECRET_HEADERS = new Set([
+  'authorization',
+  'proxy-authorization',
+  'cookie',
+  'set-cookie',
+  'x-api-key',
+]);
+
+/** FNV-1a, 64-bit. Sync, and enough to keep a bearer token out of the key. */
+function fingerprint(value: string): string {
+  let hash = 0xcbf29ce484222325n;
+  const prime = 0x100000001b3n;
+  const mask = 0xffffffffffffffffn;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= BigInt(value.charCodeAt(i));
+    hash = (hash * prime) & mask;
+  }
+  return hash.toString(16).padStart(16, '0');
+}
+
+/**
  * Order-independent header fingerprint: `{a, b}` and `{b, a}` describe the same
  * request and must not produce two cache entries.
+ *
+ * Pairs are JSON-encoded. Joining with `:` and `|` made `{a: "b|c:d"}` and
+ * `{a: "b", c: "d"}` the same key, so two different requests shared a body.
  */
 function normalizeHeaders(headers: Record<string, string> | undefined): string {
   if (!headers) return '';
-  return Object.entries(headers)
-    .map(([name, value]) => [name.toLowerCase(), value] as const)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([name, value]) => `${name}:${value}`)
-    .join('|');
+  const pairs = Object.entries(headers).map(([name, value]) => {
+    const lower = name.toLowerCase();
+    const stored = SECRET_HEADERS.has(lower) ? `fnv:${fingerprint(value)}` : value;
+    return [lower, stored] as const;
+  });
+  pairs.sort(([left], [right]) => left.localeCompare(right));
+  return JSON.stringify(pairs);
 }
 
 /** A backend that accepts everything and remembers nothing. */
@@ -230,7 +260,10 @@ export function createTtlCache(options: CreateTtlCacheOptions = {}): TtlCache {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- caller-supplied assertion; see the TtlCache interface
-  function peek<T>(key: string, parts: CacheKeyParts & { ttlMs?: number } = {}): T | null {
+  function peek<T>(
+    key: string,
+    parts: CacheKeyParts & { ttlMs?: number } = {},
+  ): T | null {
     const { ttlMs = defaultTtlMs, ...keyParts } = parts;
     const entry = readEntry(keyFor(key, keyParts));
     if (!entry) return null;
