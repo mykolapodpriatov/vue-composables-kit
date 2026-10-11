@@ -84,6 +84,16 @@ describe('createTtlCache', () => {
       );
     });
 
+    it('does not let a colon in one field cross into the next', () => {
+      const cache = createTtlCache({ storage });
+      expect(cache.keyFor('/me', { credentials: 'include' })).not.toBe(
+        cache.keyFor('/me:include'),
+      );
+      expect(cache.keyFor('/x', { body: 'a:b' })).not.toBe(
+        cache.keyFor('/x:a', { body: 'b' }),
+      );
+    });
+
     it('distinguishes headers', () => {
       const cache = createTtlCache({ storage });
       expect(cache.keyFor('/x', { headers: { authorization: 'a' } })).not.toBe(
