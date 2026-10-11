@@ -211,13 +211,20 @@ export function createTtlCache(options: CreateTtlCacheOptions = {}): TtlCache {
 
   function keyFor(key: string, parts: CacheKeyParts = {}): string {
     const method = (parts.method ?? 'GET').toUpperCase();
-    return [
-      prefix + method,
-      key,
-      parts.credentials ?? '',
-      normalizeHeaders(parts.headers),
-      safeStringify(parts.body),
-    ].join(':');
+    // One JSON array, then the namespace prefix so clear() can still find
+    // every entry. Joining the fields with ":" let a colon in the request
+    // key, the credentials mode, or a string body slide into the next field.
+    // "/me" with credentials "include" then shared an entry with "/me:include".
+    return (
+      prefix +
+      JSON.stringify([
+        method,
+        key,
+        parts.credentials ?? '',
+        normalizeHeaders(parts.headers),
+        safeStringify(parts.body),
+      ])
+    );
   }
 
   /**
